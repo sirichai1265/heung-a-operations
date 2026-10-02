@@ -121,19 +121,9 @@
   }
 
   .grid{
-    position: relative;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
-  }
-  .grid::before{
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--navy);
   }
   @media (max-width: 560px){ .grid{ grid-template-columns: 1fr; } }
 
