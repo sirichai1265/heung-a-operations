@@ -65,7 +65,7 @@
     :root:not([data-theme="light"]) body::before{ opacity: .16; }
   }
   :root[data-theme="dark"] body::before{ opacity: .16; }
-  .wrap{ position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 0 24px 56px; }
+  .wrap{ position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 0 24px 56px; }
 
   .masthead{
     display: flex;
@@ -121,11 +121,10 @@
 
   .grid{
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
     margin-top: 30px;
   }
-  @media (max-width: 860px){ .grid{ grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 560px){ .grid{ grid-template-columns: 1fr; } }
 
   .card{
