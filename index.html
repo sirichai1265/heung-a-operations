@@ -219,6 +219,8 @@
     gap: 8px;
   }
 
+  .probe{ position: absolute; left: -9999px; top: 0; width: 1200px; height: 800px; border: 0; visibility: hidden; pointer-events: none; }
+
   @media (prefers-reduced-motion: reduce){
     *{ transition: none !important; }
   }
@@ -240,9 +242,9 @@
         <h2>Vessel Tracking</h2>
         <div class="stats">
           <div class="stat"><div class="n">30</div><div class="l">Vessels tracked</div></div>
-          <div class="stat"><div class="n">12</div><div class="l">Alongside now</div></div>
+          <div class="stat"><div class="n">11</div><div class="l">Alongside now</div></div>
           <div class="stat"><div class="n">2</div><div class="l">Arriving in 48h</div></div>
-          <div class="stat"><div class="n">6</div><div class="l">Changed since yesterday</div></div>
+          <div class="stat"><div class="n">0</div><div class="l">Changed since yesterday</div></div>
         </div>
       </div>
       <div class="go">Open dashboard
@@ -255,10 +257,10 @@
       <div class="body">
         <h2>Cut off and 1st Return</h2>
         <div class="stats">
-          <div class="stat"><div class="n">60</div><div class="l">Total voyages</div></div>
-          <div class="stat"><div class="n">26 / 34</div><div class="l">THBKK / THLCH</div></div>
-          <div class="stat"><div class="n">8</div><div class="l">Arriving in 7 days</div></div>
-          <div class="stat"><div class="n">02 OCT</div><div class="l">Nearest cut-off (Dry)</div></div>
+          <div class="stat"><div class="n">74</div><div class="l">Total voyages</div></div>
+          <div class="stat"><div class="n">32 / 42</div><div class="l">THBKK / THLCH</div></div>
+          <div class="stat"><div class="n">11</div><div class="l">Arriving in 7 days</div></div>
+          <div class="stat"><div class="n">05 OCT</div><div class="l">Nearest cut-off (Dry)</div></div>
         </div>
       </div>
       <div class="go">Open dashboard
@@ -271,10 +273,10 @@
       <div class="body">
         <h2>PAT Berth Window</h2>
         <div class="stats">
-          <div class="stat"><div class="n">1</div><div class="l">Alongside now</div></div>
-          <div class="stat"><div class="n">0</div><div class="l">At anchorage</div></div>
-          <div class="stat"><div class="n">03 OCT</div><div class="l">Next berthing</div></div>
-          <div class="stat"><div class="n">3</div><div class="l">Berth notices</div></div>
+          <div class="stat"><div class="n">4</div><div class="l">Alongside now</div></div>
+          <div class="stat"><div class="n">1</div><div class="l">At anchorage</div></div>
+          <div class="stat"><div class="n">04 · 15:00</div><div class="l">Next berthing</div></div>
+          <div class="stat"><div class="n">5</div><div class="l">Berth notices</div></div>
         </div>
       </div>
       <div class="go">Open dashboard
@@ -300,7 +302,7 @@
   </div>
 
   <footer>
-    <span>Figures above are a snapshot at publish time — open the link for live data</span>
+    <span id="live-note">Figures above are a snapshot at publish time — open the link for live data</span>
   </footer>
 </div>
 
@@ -308,4 +310,93 @@
   document.getElementById("stamp-date").textContent = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit"
   }).format(new Date());
+</script>
+
+<script>
+  /* Live stats: each dashboard is loaded in a hidden same-origin frame and its
+     summary numbers are copied into the matching card. If a dashboard cannot be
+     read, its card keeps the snapshot values written in the markup above. */
+  (function () {
+    var BASE = "https://sirichai1265.github.io/";
+    function num(t) { return (t || "").replace(/\s+/g, " ").trim(); }
+
+    var sources = [
+      { key: "heung-a-sked", url: BASE + "heung-a-sked/",
+        read: function (d) {
+          var n = [].slice.call(d.querySelectorAll(".stat-num")).map(function (e) { return num(e.textContent); });
+          return n.length >= 4 && n.slice(0, 4).every(function (x) { return x !== ""; }) ? n.slice(0, 4) : null;
+        } },
+      { key: "heung-a-cutoff", url: BASE + "heung-a-cutoff/",
+        read: function (d) {
+          var m = {};
+          [].forEach.call(d.querySelectorAll(".seg-stat"), function (s) {
+            var l = s.querySelector(".lbl"), v = s.querySelector(".val");
+            if (l && v) m[num(l.textContent).toLowerCase()] = num(v.textContent);
+          });
+          var a = m["voyages shown"], b = m["thbkk / thlch"], c = m["arriving next 7 days"], e = m["nearest cut off (dry)"];
+          if (!a || !b || !c || !e) return null;
+          var dm = e.match(/(\d{1,2})\s+([A-Za-z]{3})/);
+          return [a, b, c, dm ? ("0" + dm[1]).slice(-2) + " " + dm[2].toUpperCase() : e];
+        } },
+      { key: "PAT-BERTH", url: BASE + "PAT-BERTH/",
+        read: function (d) {
+          var m = {};
+          [].forEach.call(d.querySelectorAll(".tile"), function (t) {
+            var k = t.querySelector(".k"), v = t.querySelector(".v");
+            if (k && v) m[num(k.textContent).toLowerCase()] = num(v.textContent);
+          });
+          var a = m["alongside now"], b = m["at anchorage"], c = m["next berthing"], e = m["berth notices"];
+          if (!a || !b || !c || !e) return null;
+          var nb = c.match(/^(\d{1,2})\/(\d{1,2})$/);
+          return [a, b, nb ? nb[1] + " · " + nb[2] + ":00" : c, e];
+        } }
+    ];
+
+    function probe(src) {
+      return new Promise(function (resolve) {
+        var f = document.createElement("iframe");
+        f.className = "probe";
+        f.setAttribute("aria-hidden", "true");
+        f.tabIndex = -1;
+        var settled = false, timer;
+        function finish(v) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          f.remove();
+          resolve(v);
+        }
+        f.addEventListener("load", function () {
+          setTimeout(function () {
+            try { finish(src.read(f.contentDocument)); } catch (e) { finish(null); }
+          }, 900);
+        });
+        timer = setTimeout(function () { finish(null); }, 15000);
+        f.src = src.url;
+        document.body.appendChild(f);
+      });
+    }
+
+    function refresh() {
+      Promise.all(sources.map(probe)).then(function (results) {
+        var ok = 0;
+        results.forEach(function (vals, i) {
+          if (!vals) return;
+          var card = document.querySelector('a.card[href*="' + sources[i].key + '"]');
+          if (!card) return;
+          var cells = card.querySelectorAll(".stat .n");
+          vals.forEach(function (v, j) { if (cells[j]) cells[j].textContent = v; });
+          ok++;
+        });
+        var note = document.getElementById("live-note");
+        if (note && ok) {
+          var t = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+          note.textContent = "Live figures from the dashboards (" + ok + " of " + sources.length + ") · refreshed " + t + " (UTC+7)";
+        }
+      });
+    }
+
+    refresh();
+    setInterval(refresh, 15 * 60 * 1000);
+  })();
 </script>
